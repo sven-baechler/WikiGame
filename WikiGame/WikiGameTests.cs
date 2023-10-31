@@ -1,6 +1,5 @@
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 namespace WikiGame
 {
@@ -23,18 +22,22 @@ namespace WikiGame
         [Test]
         public void StartGame()
         {
-            //this.NavigateToRandomPage();
-
-            this.driver.Navigate().GoToUrl("https://de.wikipedia.org/wiki/Mabe_(Solukhumbu)");
+            // Seite um Klammern zu testen
+            //this.driver.Navigate().GoToUrl("https://de.wikipedia.org/wiki/Mabe_(Solukhumbu)");
 
             int linksClicked = 0;
 
-            while (linksClicked <= 10)
+            this.NavigateToRandomPage();
+            
+            while (!this.IsOnPagePhilosophy())
             {
                 this.ClickNextLink();
+                linksClicked++;
             }
 
-            Assert.True(linksClicked == 10, "10 Links geklickt");
+            int test = linksClicked;
+
+            Assert.True(this.IsOnPagePhilosophy());
         }
 
         [OneTimeTearDown]
@@ -75,6 +78,13 @@ namespace WikiGame
 
                 links.AddRange(linksInParagraph);
             }
+
+            links[0].Click();
+        }
+
+        private bool IsOnPagePhilosophy()
+        {
+            return this.driver.Url == "https://de.wikipedia.org/wiki/Philosophie";
         }
     }
 }
