@@ -1,5 +1,6 @@
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
+using System.Text.RegularExpressions;
 
 namespace WikiGame
 {
@@ -53,6 +54,11 @@ namespace WikiGame
             randomPageButton.Click();
         }
 
+        private bool IsOnPagePhilosophy()
+        {
+            return this.driver.Url == "https://de.wikipedia.org/wiki/Philosophie";
+        }
+
         private void ClickNextLink()
         {
             IWebElement pageText = driver.FindElement(By.CssSelector("#mw-content-text > .mw-parser-output"));
@@ -62,29 +68,96 @@ namespace WikiGame
 
             foreach (IWebElement paragraph in paragraphs)
             {
-                List<IWebElement> linksInParagraph = paragraph.FindElements(By.TagName("a")).ToList();
+                int indexOfFirstValidLink = this.getIndexOfFirstValidLink(paragraph.GetAttribute("innerHTML"));
 
-                // auf klammern überprüfen
-                if (paragraph.Text.Contains("(") && paragraph.Text.Contains(")"))
+                if (indexOfFirstValidLink > -1)
                 {
+                    List<IWebElement> linksInParagraph = paragraph.FindElements(By.TagName("a")).ToList();
 
+                    linksInParagraph[indexOfFirstValidLink].Click();
+                    return;
                 }
-
-                foreach (IWebElement link in linksInParagraph)
-                {
-                    int startposition = paragraph.Text.IndexOf(link.Text);
-                    int endposition = startposition + link.Text.Length - 1;
-                }
-
-                links.AddRange(linksInParagraph);
             }
 
-            links[0].Click();
+            throw new Exception("No Link found on page " + driver.Url);
         }
 
-        private bool IsOnPagePhilosophy()
+        private int getIndexOfFirstValidLink(string html)
         {
-            return this.driver.Url == "https://de.wikipedia.org/wiki/Philosophie";
+            int insideCursive = 0;
+            int insideParenthesis = 0;
+            int insideBrackets = 0;
+
+            int linkStart = -1;
+            int linkEnd = -1;
+
+            int linkIndex = -1;
+
+            for (int i = 0; i < html.Length; i++)
+            {
+                char current = html[i];
+
+                if (current.Equals('<'))
+                {
+                    if (html[i + 1].Equals('i') && html[i + 2].Equals('>'))
+                    {
+                        insideCursive += 1;
+                        i += 2;
+                    }
+                    else if (html[i + 1].Equals('/') && html[i + 2].Equals('i') && html[i + 3].Equals('>'))
+                    {
+                        insideCursive -= 1;
+                        i += 3;
+                    }
+                    else if (html[i + 1].Equals('a'))
+                    {
+                        linkStart = i;
+                        i += 1;
+                    }
+                    else if (html[i + 1].Equals('/') && html[i + 2].Equals('a') && html[i + 3].Equals('>'))
+                    {
+                        linkEnd = i + 3;
+                        i += 3;
+                    }
+                }
+                else if (current.Equals('('))
+                {
+                    insideParenthesis += 1;
+                }
+                else if (current.Equals(')'))
+                {
+                    insideParenthesis -= 1;
+                }
+                else if (current.Equals('['))
+                {
+                    insideBrackets += 1;
+                }
+                else if (current.Equals(']'))
+                {
+                    insideBrackets -= 1;
+                }
+
+
+                if (linkStart > -1 && linkEnd > -1)
+                {
+                    linkIndex += 1;
+
+                    if (insideCursive == 0 && insideParenthesis == 0 && insideBrackets == 0)
+                    {
+                        String link = html.Substring(linkStart, linkEnd - linkStart + 1);
+
+                        if (Regex.IsMatch(link, "<a.*?>\\w*<\\/a>"))
+                        {
+                            return linkIndex;
+                        }
+                    }
+
+                    linkStart = -1;
+                    linkEnd = -1;
+                }
+            }
+
+            return -1;
         }
     }
 }
