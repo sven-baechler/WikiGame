@@ -27,18 +27,25 @@ namespace WikiGame
             //this.driver.Navigate().GoToUrl("https://de.wikipedia.org/wiki/Mabe_(Solukhumbu)");
 
             int linksClicked = 0;
+            List<string> clickedLinks = new List<string>();
 
             this.NavigateToRandomPage();
             
             while (!this.IsOnPagePhilosophy())
             {
-                this.ClickNextLink();
+                string clickedLink = this.ClickNextLink();
                 linksClicked++;
+
+                if (clickedLinks.Contains(this.driver.Url))
+                {
+                    // stop when is in loop
+                    throw new Exception("Game befindet sich in einer Loop");
+                }
+
+                clickedLinks.Add(clickedLink);
             }
 
-            int test = linksClicked;
-
-            Assert.True(this.IsOnPagePhilosophy());
+            Assert.True(this.IsOnPagePhilosophy(), "Anzahl geklickte Links: " + linksClicked);
         }
 
         [OneTimeTearDown]
@@ -59,7 +66,7 @@ namespace WikiGame
             return this.driver.Url == "https://de.wikipedia.org/wiki/Philosophie";
         }
 
-        private void ClickNextLink()
+        private string ClickNextLink()
         {
             IWebElement pageText = driver.FindElement(By.CssSelector("#mw-content-text > .mw-parser-output"));
 
@@ -75,7 +82,7 @@ namespace WikiGame
                     List<IWebElement> linksInParagraph = paragraph.FindElements(By.TagName("a")).ToList();
 
                     linksInParagraph[indexOfFirstValidLink].Click();
-                    return;
+                    return this.driver.Url;
                 }
             }
 
